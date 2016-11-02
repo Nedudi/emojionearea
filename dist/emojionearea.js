@@ -3,7 +3,7 @@
  * https://github.com/mervick/emojionearea
  * Copyright Andrey Izman and other contributors
  * Released under the MIT license
- * Date: 2016-10-25T20:22Z
+ * Date: 2016-11-02T16:04Z
  */
 (function(document, window, $) {
     'use strict';
@@ -411,7 +411,7 @@
             .replace(/(\n+)/g, '<div>$1</div>')
             .replace(/\n/g, '<br/>')
             .replace(/<br\/><\/div>/g, '</div>');
-        if (self.shortnames) {
+        if (self && self.shortnames) {
             str = emojione.shortnameToUnicode(str);
         }
         return unicodeTo(str, self.emojiTemplate)
@@ -568,16 +568,27 @@
             return false;
         }
     }
-    function linkify(editor, event) {
+    function linkify(instance, editor, event) {
+
     var hasUpdatedLinks = false
     var textbox = editor[0];
     var regex = /((((http|https):\/\/))(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?)|(\B#(?:\[[^\]]+\]|\S+))|(\B@(?:\[[^\]]+\]|\S+))/i;
+    textbox._previousTextContent = textbox._previousTextContent || '';
 
     var createLink = function(matchedTextNode){
       var el = document.createElement("a");
       el.href = matchedTextNode.data;
       el.appendChild(matchedTextNode);
+
       return el;
+    };
+
+    var storeContent = function(){
+      textbox._previousTextContent = textbox.innerText;
+    };
+
+    var isSameAsPreviousContent = function(){
+      return textbox._previousTextContent.trim() === textbox.innerText.trim();
     };
 
     var shouldLinkifyContents = function(el){
@@ -585,6 +596,7 @@
     };
 
     var surroundInElement = function(el, regex, surrounderCreateFunc, shouldSurroundFunc) {
+
       var child = el.lastChild;
       while (child) {
         if (child.nodeType == 1 && shouldSurroundFunc(el)) {
@@ -597,6 +609,8 @@
     };
 
     var surroundMatchingText = function(textNode, regex, surrounderCreateFunc) {
+
+
       var parent = textNode.parentNode;
       var result, surroundingNode, matchedTextNode, matchLength, matchedText;
       while ( textNode && (result = regex.exec(textNode.data)) ) {
@@ -617,10 +631,7 @@
       for(var a=0; a<aNodes.length;a++){
         var regexResult = regex.exec(aNodes[a].innerText);
         var validLink = !!(regexResult && regexResult[0] && regexResult[0] === aNodes[a].innerText);
-        if(event.keyCode !== 13){ // || !validLink
           linksToRemove.push(aNodes[a]);
-          //console.log(aNodes[a].innerText, regex.exec(aNodes[a].innerText));
-        }
       }
 
       for(var i=0; i<linksToRemove.length;i++){
@@ -641,11 +652,106 @@
       }
     };
 
-    window.clearTimeout(window.__updateEmojiEditorLinkTimeout);
-    window.__updateEmojiEditorLinkTimeout = setTimeout(function(){
-      console.log('updateLinks')
-      updateLinks();
-    }, 500);
+    if(instance && editor){
+      if(
+        event.keyCode === 13 || //enter
+        event.keyCode === 32 || //space
+        event.keyCode === 8  || // backspace
+        event.keyCode === 46 // del
+      ){
+        instance.onHistoryChange();
+      } else if(isSameAsPreviousContent()){
+        storeContent();
+      } else {
+        storeContent();
+        window.clearTimeout(textbox._updateEmojiEditorLinkTimeout);
+        textbox._updateEmojiEditorLinkTimeout = setTimeout(function(){
+          if(
+            !event.ctrlKey &&
+            event.keyCode !== 90 &&
+            event.keyCode !== 91  &&
+            event.keyCode !== 16
+          ) {
+            instance.onHistoryChange();
+          }
+          updateLinks();
+          storeContent();
+        }, 200);
+      }
+    } else {
+      surroundInElement(textbox, regex, createLink, shouldLinkifyContents);
+    }
+  }
+/* mousetrap v1.6.0 craig.is/killing/mice */
+(function(r,t,g){function u(a,b,h){a.addEventListener?a.addEventListener(b,h,!1):a.attachEvent("on"+b,h)}function y(a){if("keypress"==a.type){var b=String.fromCharCode(a.which);a.shiftKey||(b=b.toLowerCase());return b}return k[a.which]?k[a.which]:p[a.which]?p[a.which]:String.fromCharCode(a.which).toLowerCase()}function D(a){var b=[];a.shiftKey&&b.push("shift");a.altKey&&b.push("alt");a.ctrlKey&&b.push("ctrl");a.metaKey&&b.push("meta");return b}function v(a){return"shift"==a||"ctrl"==a||"alt"==a||
+"meta"==a}function z(a,b){var h,c,e,g=[];h=a;"+"===h?h=["+"]:(h=h.replace(/\+{2}/g,"+plus"),h=h.split("+"));for(e=0;e<h.length;++e)c=h[e],A[c]&&(c=A[c]),b&&"keypress"!=b&&B[c]&&(c=B[c],g.push("shift")),v(c)&&g.push(c);h=c;e=b;if(!e){if(!n){n={};for(var l in k)95<l&&112>l||k.hasOwnProperty(l)&&(n[k[l]]=l)}e=n[h]?"keydown":"keypress"}"keypress"==e&&g.length&&(e="keydown");return{key:c,modifiers:g,action:e}}function C(a,b){return null===a||a===t?!1:a===b?!0:C(a.parentNode,b)}function c(a){function b(a){a=
+a||{};var b=!1,m;for(m in n)a[m]?b=!0:n[m]=0;b||(w=!1)}function h(a,b,m,f,c,h){var g,e,k=[],l=m.type;if(!d._callbacks[a])return[];"keyup"==l&&v(a)&&(b=[a]);for(g=0;g<d._callbacks[a].length;++g)if(e=d._callbacks[a][g],(f||!e.seq||n[e.seq]==e.level)&&l==e.action){var q;(q="keypress"==l&&!m.metaKey&&!m.ctrlKey)||(q=e.modifiers,q=b.sort().join(",")===q.sort().join(","));q&&(q=f&&e.seq==f&&e.level==h,(!f&&e.combo==c||q)&&d._callbacks[a].splice(g,1),k.push(e))}return k}function g(a,b,m,f){d.stopCallback(b,
+b.target||b.srcElement,m,f)||!1!==a(b,m)||(b.preventDefault?b.preventDefault():b.returnValue=!1,b.stopPropagation?b.stopPropagation():b.cancelBubble=!0)}function e(a){"number"!==typeof a.which&&(a.which=a.keyCode);var b=y(a);b&&("keyup"==a.type&&x===b?x=!1:d.handleKey(b,D(a),a))}function k(a,c,m,f){function e(c){return function(){w=c;++n[a];clearTimeout(r);r=setTimeout(b,1E3)}}function h(c){g(m,c,a);"keyup"!==f&&(x=y(c));setTimeout(b,10)}for(var d=n[a]=0;d<c.length;++d){var p=d+1===c.length?h:e(f||
+z(c[d+1]).action);l(c[d],p,f,a,d)}}function l(a,b,c,f,e){d._directMap[a+":"+c]=b;a=a.replace(/\s+/g," ");var g=a.split(" ");1<g.length?k(a,g,b,c):(c=z(a,c),d._callbacks[c.key]=d._callbacks[c.key]||[],h(c.key,c.modifiers,{type:c.action},f,a,e),d._callbacks[c.key][f?"unshift":"push"]({callback:b,modifiers:c.modifiers,action:c.action,seq:f,level:e,combo:a}))}var d=this;a=a||t;if(!(d instanceof c))return new c(a);d.target=a;d._callbacks={};d._directMap={};var n={},r,x=!1,p=!1,w=!1;d._handleKey=function(a,
+c,e){var f=h(a,c,e),d;c={};var k=0,l=!1;for(d=0;d<f.length;++d)f[d].seq&&(k=Math.max(k,f[d].level));for(d=0;d<f.length;++d)f[d].seq?f[d].level==k&&(l=!0,c[f[d].seq]=1,g(f[d].callback,e,f[d].combo,f[d].seq)):l||g(f[d].callback,e,f[d].combo);f="keypress"==e.type&&p;e.type!=w||v(a)||f||b(c);p=l&&"keydown"==e.type};d._bindMultiple=function(a,b,c){for(var d=0;d<a.length;++d)l(a[d],b,c)};u(a,"keypress",e);u(a,"keydown",e);u(a,"keyup",e)}if(r){var k={8:"backspace",9:"tab",13:"enter",16:"shift",17:"ctrl",
+18:"alt",20:"capslock",27:"esc",32:"space",33:"pageup",34:"pagedown",35:"end",36:"home",37:"left",38:"up",39:"right",40:"down",45:"ins",46:"del",91:"meta",93:"meta",224:"meta"},p={106:"*",107:"+",109:"-",110:".",111:"/",186:";",187:"=",188:",",189:"-",190:".",191:"/",192:"`",219:"[",220:"\\",221:"]",222:"'"},B={"~":"`","!":"1","@":"2","#":"3",$:"4","%":"5","^":"6","&":"7","*":"8","(":"9",")":"0",_:"-","+":"=",":":";",'"':"'","<":",",">":".","?":"/","|":"\\"},A={option:"alt",command:"meta","return":"enter",
+escape:"esc",plus:"+",mod:/Mac|iPod|iPhone|iPad/.test(navigator.platform)?"meta":"ctrl"},n;for(g=1;20>g;++g)k[111+g]="f"+g;for(g=0;9>=g;++g)k[g+96]=g;c.prototype.bind=function(a,b,c){a=a instanceof Array?a:[a];this._bindMultiple.call(this,a,b,c);return this};c.prototype.unbind=function(a,b){return this.bind.call(this,a,function(){},b)};c.prototype.trigger=function(a,b){if(this._directMap[a+":"+b])this._directMap[a+":"+b]({},a);return this};c.prototype.reset=function(){this._callbacks={};this._directMap=
+{};return this};c.prototype.stopCallback=function(a,b){return-1<(" "+b.className+" ").indexOf(" mousetrap ")||C(b,this.target)?!1:"INPUT"==b.tagName||"SELECT"==b.tagName||"TEXTAREA"==b.tagName||b.isContentEditable};c.prototype.handleKey=function(){return this._handleKey.apply(this,arguments)};c.addKeycodes=function(a){for(var b in a)a.hasOwnProperty(b)&&(k[b]=a[b]);n=null};c.init=function(){var a=c(t),b;for(b in a)"_"!==b.charAt(0)&&(c[b]=function(b){return function(){return a[b].apply(a,arguments)}}(b))};
+c.init();r.Mousetrap=c;"undefined"!==typeof module&&module.exports&&(module.exports=c);"function"===typeof define&&define.amd&&define('function/mousetrap',[],function(){return c})}})("undefined"!==typeof window?window:null,"undefined"!==typeof window?document:null);
+
+
+    function undoRedo(self, editor, event) {
+    self.undoStack = [];
+    self.redoStack = [];
+
+    self.clearHistory = function() {
+      self.undoStack.length = 0;
+      self.redoStack.length = 0;
+    };
+
+    self.onHistoryChange = function() {
+      self.addToUndoStack({
+        html: self.editor[0].innerHTML,
+        selection: saveSelection(editor[0])
+      });
+      self.redoStack.length = 0;
+      trigger(self, 'realtimechange', [editor]);
+    };
+
+    self.addToUndoStack = function(data) {
+      self.undoStack.push(data);
+    };
+
+    self.addToRedoStack = function(data) {
+      self.undoStack.push(data);
+    };
+
+    self.undo = function() {
+      if (self.undoStack.length) {
+        self.redoStack.push(self.undoStack.pop());
+        if (self.undoStack.length) {
+          var data = self.undoStack[self.undoStack.length - 1];
+          self.editor[0].innerHTML = data.html;
+          restoreSelection(editor[0], data.selection);
+          trigger(self, 'realtimechange', [editor]);
+        }
+      }
+    };
+
+    self.redo = function() {
+      if (self.redoStack.length) {
+        var data = self.redoStack[self.redoStack.length - 1];
+        self.editor[0].innerHTML = data.html;
+        restoreSelection(editor[0], data.selection);
+        self.undoStack.push(self.redoStack.pop());
+        trigger(self, 'realtimechange', [editor]);
+      }
+    };
+
+    self.clear = function() {
+      self.onHistoryChange();
+    };
+
+    self.reset = function() {
+      self.clearHistory();
+    };
+
+    return self;
   }
     function init(self, source, options) {
         //calcElapsedTime('init', function() {
@@ -705,6 +811,8 @@
         );
 
         editor.data(source.data());
+
+
 
         $.each(options.attributes, function(attr, value) {
             editor.attr(attr, value);
@@ -826,6 +934,24 @@
             }
         });
 
+        editor.addClass('mousetrap');
+
+        Mousetrap(editor[0]).bind(['ctrl+z', 'command+z'], function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            self.undo();
+        });
+
+
+        Mousetrap(editor[0]).bind(['ctrl+shift+z', 'command+shift+z'], function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        self.redo();
+        });
+
+
+        self = undoRedo(self, editor)
+
         self.on("@filter.click", function(filter) {
             var isActive = filter.is(".active");
             if (scrollArea.is(".skinnable")) {
@@ -885,17 +1011,18 @@
                 var caretID = "caret-" + (new Date()).getTime();
                 var html = htmlFromText(text, self);
                 pasteHtmlAtCaret(html);
-                pasteHtmlAtCaret('<i id="' + caretID +'"></i>');
-                editor.scrollTop(editorScrollTop);
-                var caret = $("#" + caretID),
-                    top = caret.offset().top - editor.offset().top,
-                    height = editor.height();
-                if (editorScrollTop + top >= height || editorScrollTop > top) {
-                    editor.scrollTop(editorScrollTop + top - 2 * height/3);
-                }
-                caret.remove();
+                //pasteHtmlAtCaret('<i id="' + caretID +'"></i>');
+                // editor.scrollTop(editorScrollTop);
+                // var caret = $("#" + caretID),
+                //     top = caret.offset().top - editor.offset().top,
+                //     height = editor.height();
+                // if (editorScrollTop + top >= height || editorScrollTop > top) {
+                //     editor.scrollTop(editorScrollTop + top - 2 * height/3);
+                // }
+                //caret.remove();
                 self.stayFocused = false;
-                calcButtonPosition.apply(self);
+                //calcButtonPosition.apply(self);
+                self.onHistoryChange();
                 trigger(self, 'paste', [editor, text, html]);
             }
 
@@ -931,7 +1058,7 @@
                 var text = textFromHtml(clipboard.html().replace(/\r\n|\n|\r/g, '<br>'), self);
                 clipboard.remove();
                 pasteText(text);
-                linkify(editor, event)
+                linkify(self, editor, event)
             }, 200);
         })
 
@@ -951,12 +1078,16 @@
             if (self.recentEmojis) {
                 setRecent(self, emojibtn.data("name"));
             }
+            setTimeout(function(){
+              self.onHistoryChange();
+            },100);
+
         })
 
         .on("@!resize @keyup @emojibtn.click", calcButtonPosition)
 
         .on("@keyup", function(editor, event){
-          linkify(editor, event)
+          linkify(self, editor, event)
         })
 
         .on("@!mousedown", function(editor, event) {
@@ -976,7 +1107,16 @@
             source[sourceValFunc](self.getText());
         })
 
+        // .on("@init", function() {
+
+        // })
+
         .on("@focus", function() {
+            if(self.undoStack.length === 0){
+               setTimeout(function(){
+                 self.onHistoryChange();
+               },100);
+            }
             app.addClass("focused");
         })
 
@@ -1091,7 +1231,7 @@
         //}, self.id === 1); // calcElapsedTime()
     };
     var emojioneVersion = window.emojioneVersion || '2.1.4';
-    var cdn = { 
+    var cdn = {
         defaultBase: "https://cdnjs.cloudflare.com/ajax/libs/emojione/",
         base: null,
         isLoading: false
@@ -1172,6 +1312,15 @@
             init(self, element, options);
         });
     };
+    var EmojioneAreaEmojify = function(element, options) {
+        var self = this;
+        self.emojiTemplate = '<img alt="{alt}" class="emojione' + (self.sprite ? '-{uni}" src="' + blankImg + '"/>' : 'emoji" src="{img}"/>');
+        loadEmojione(options);
+        emojioneReady(function() {
+            element.html(htmlFromText(element.html(), self));
+            linkify(false,element);
+        });
+    };
     function bindEvent(self, event) {
         event = event.replace(/^@/, '');
         var id = self.id;
@@ -1245,7 +1394,12 @@
         emojioneReady(function () {
             self.editor.html(htmlFromText(str, self));
             self.content = self.editor.html();
-            trigger(self, 'change', [self.editor]);
+            linkify(self, self.editor, {})
+            setTimeout(function(){
+              //trigger(self, 'change', [self.editor]);
+              trigger(self, 'init', [self.editor]);
+            },0)
+
             calcButtonPosition.apply(self);
         });
         return self;
@@ -1281,11 +1435,30 @@
         return self;
     }
 
+    EmojioneArea.prototype.emojify = function (str) {
+        var self = this;
+        //emojioneReady(function () {
+            var out = htmlFromText(str, self);
+            //self.content = self.editor.html();
+            //linkify(self, self.editor, {})
+
+        //});
+        return out;
+    }
+
     $.fn.emojioneArea = function(options) {
         return this.each(function() {
             if (!!this.emojioneArea) return this.emojioneArea;
             $.data(this, 'emojioneArea', this.emojioneArea = new EmojioneArea($(this), options));
             return this.emojioneArea;
+        });
+    };
+
+    $.fn.emojioneAreaEmojify= function(options) {
+        return this.each(function(element) {
+            if (!!this.emojioneAreaEmojify) return this.emojioneAreaEmojify;
+            $.data(this, 'emojioneAreaEmojify', this.emojioneAreaEmojify = new EmojioneAreaEmojify($(this), options));
+            return this.emojioneAreaEmojify;
         });
     };
 

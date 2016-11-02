@@ -15,7 +15,7 @@ function(emojione, unicodeTo) {
             .replace(/(\n+)/g, '<div>$1</div>')
             .replace(/\n/g, '<br/>')
             .replace(/<br\/><\/div>/g, '</div>');
-        if (self.shortnames) {
+        if (self && self.shortnames) {
             str = emojione.shortnameToUnicode(str);
         }
         return unicodeTo(str, self.emojiTemplate)

@@ -5,7 +5,8 @@ define([
     'function/textFromHtml',
     'function/trigger',
     'function/calcButtonPosition',
-    'prototype/var/EmojioneArea'
+    'prototype/var/EmojioneArea',
+    'function/linkify'
 ],
 function($, emojioneReady, htmlFromText, trigger, calcButtonPosition, EmojioneArea) {
     EmojioneArea.prototype.setText = function (str) {
@@ -13,7 +14,12 @@ function($, emojioneReady, htmlFromText, trigger, calcButtonPosition, EmojioneAr
         emojioneReady(function () {
             self.editor.html(htmlFromText(str, self));
             self.content = self.editor.html();
-            trigger(self, 'change', [self.editor]);
+            linkify(self, self.editor, {})
+            setTimeout(function(){
+              //trigger(self, 'change', [self.editor]);
+              trigger(self, 'init', [self.editor]);
+            },0)
+
             calcButtonPosition.apply(self);
         });
         return self;

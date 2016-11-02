@@ -24,12 +24,14 @@ define([
     'function/getRecent',
     'function/setRecent',
     'function/supportsLocalStorage',
-    'function/linkify'
+    'function/linkify',
+    'function/mousetrap',
+    'function/undoRedo'
     //'function/calcElapsedTime', // debug only
 ],
 function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisibleChar, trigger, attach, shortnameTo,
          pasteHtmlAtCaret, getOptions, saveSelection, restoreSelection, htmlFromText, textFromHtml, isObject,
-         calcButtonPosition, lazyLoading, selector, div, updateRecent, getRecent, setRecent, supportsLocalStorage, linkify)
+         calcButtonPosition, lazyLoading, selector, div, updateRecent, getRecent, setRecent, supportsLocalStorage, linkify, Mousetrap, undoRedo)
 {
     return function(self, source, options) {
         //calcElapsedTime('init', function() {
@@ -89,6 +91,8 @@ function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisible
         );
 
         editor.data(source.data());
+
+
 
         $.each(options.attributes, function(attr, value) {
             editor.attr(attr, value);
@@ -210,6 +214,24 @@ function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisible
             }
         });
 
+        editor.addClass('mousetrap');
+
+        Mousetrap(editor[0]).bind(['ctrl+z', 'command+z'], function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            self.undo();
+        });
+
+
+        Mousetrap(editor[0]).bind(['ctrl+shift+z', 'command+shift+z'], function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        self.redo();
+        });
+
+
+        self = undoRedo(self, editor, event)
+
         self.on("@filter.click", function(filter) {
             var isActive = filter.is(".active");
             if (scrollArea.is(".skinnable")) {
@@ -269,17 +291,18 @@ function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisible
                 var caretID = "caret-" + (new Date()).getTime();
                 var html = htmlFromText(text, self);
                 pasteHtmlAtCaret(html);
-                pasteHtmlAtCaret('<i id="' + caretID +'"></i>');
-                editor.scrollTop(editorScrollTop);
-                var caret = $("#" + caretID),
-                    top = caret.offset().top - editor.offset().top,
-                    height = editor.height();
-                if (editorScrollTop + top >= height || editorScrollTop > top) {
-                    editor.scrollTop(editorScrollTop + top - 2 * height/3);
-                }
-                caret.remove();
+                //pasteHtmlAtCaret('<i id="' + caretID +'"></i>');
+                // editor.scrollTop(editorScrollTop);
+                // var caret = $("#" + caretID),
+                //     top = caret.offset().top - editor.offset().top,
+                //     height = editor.height();
+                // if (editorScrollTop + top >= height || editorScrollTop > top) {
+                //     editor.scrollTop(editorScrollTop + top - 2 * height/3);
+                // }
+                //caret.remove();
                 self.stayFocused = false;
-                calcButtonPosition.apply(self);
+                //calcButtonPosition.apply(self);
+                self.onHistoryChange();
                 trigger(self, 'paste', [editor, text, html]);
             }
 
@@ -315,7 +338,7 @@ function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisible
                 var text = textFromHtml(clipboard.html().replace(/\r\n|\n|\r/g, '<br>'), self);
                 clipboard.remove();
                 pasteText(text);
-                linkify(editor, event)
+                linkify(self, editor, event)
             }, 200);
         })
 
@@ -335,12 +358,16 @@ function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisible
             if (self.recentEmojis) {
                 setRecent(self, emojibtn.data("name"));
             }
+            setTimeout(function(){
+              self.onHistoryChange();
+            },100);
+
         })
 
         .on("@!resize @keyup @emojibtn.click", calcButtonPosition)
 
         .on("@keyup", function(editor, event){
-          linkify(editor, event)
+          linkify(self, editor, event)
         })
 
         .on("@!mousedown", function(editor, event) {
@@ -360,7 +387,16 @@ function($, emojione, blankImg, slice, css_class, emojioneSupportMode, invisible
             source[sourceValFunc](self.getText());
         })
 
+        // .on("@init", function() {
+
+        // })
+
         .on("@focus", function() {
+            if(self.undoStack.length === 0){
+               setTimeout(function(){
+                 self.onHistoryChange();
+               },100);
+            }
             app.addClass("focused");
         })
 
